@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Happy Diwali, Team!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Hind:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ===== EDIT THESE TO CHANGE THE LOOK ===== */
+:root{
+  --night:#1b1236; --plum:#2e1a55; --marigold:#ffb627; --flame:#ff7a1a;
+  --rose:#ff4f81; --text:#fff4e0; --muted:#cbb8e8;
+  /* Background photo: put your own image in the same folder as this file, named bg.jpg.
+     If the file is missing, the page simply shows the gradient. */
+  --bg-img:url("bg.jpg");
+}
+*{box-sizing:border-box;margin:0}
+html,body{min-height:100%}
+body{
+  font-family:Hind,system-ui,sans-serif;color:var(--text);
+  background:
+    linear-gradient(rgba(27,18,54,.72),rgba(27,18,54,.88)),
+    var(--bg-img) center top/cover no-repeat,
+    radial-gradient(ellipse at 50% 0%,var(--plum),var(--night) 70%);
+  background-attachment:fixed;
+  line-height:1.6;padding:0 20px 60px;
+}
+main{max-width:720px;margin:0 auto;text-align:center}
+.hero{display:block;margin:6vh auto 0;width:clamp(150px,38vw,230px);height:auto;aspect-ratio:1;object-fit:cover;border-radius:50%;border:4px solid var(--marigold);box-shadow:0 0 40px rgba(255,182,39,.45)}
+h1{font-family:"Rozha One",Georgia,serif;font-weight:400;font-size:clamp(2.4rem,9vw,4.6rem);line-height:1.1;padding-top:3vh;color:var(--marigold)}
+.to{font-size:1.3rem;margin-top:10px;color:var(--text)}
+.hint{color:var(--muted);margin-top:36px;font-size:1rem}
+.diyas{display:flex;justify-content:center;gap:clamp(8px,3vw,28px);margin:22px 0 10px}
+.diya{background:none;border:0;cursor:pointer;width:clamp(52px,15vw,84px);padding:0;color:inherit}
+.diya:focus-visible{outline:3px solid var(--marigold);outline-offset:6px;border-radius:12px}
+.diya svg{width:100%;height:auto;overflow:visible}
+.flame{opacity:0;transform-origin:50% 100%;transform:scale(.2);transition:opacity .4s,transform .5s cubic-bezier(.3,1.6,.5,1)}
+.glow{opacity:0;transition:opacity .6s}
+.diya.lit .flame{opacity:1;transform:scale(1);animation:flick 1.6s ease-in-out infinite .5s}
+.diya.lit .glow{opacity:1}
+@keyframes flick{50%{transform:scale(1.06,.94) rotate(-2deg)}}
+.card{
+  margin:34px auto 0;padding:30px 26px;border-radius:22px;max-width:560px;
+  background:rgba(255,244,224,.08);border:1px solid rgba(255,182,39,.35);
+  opacity:0;transform:translateY(14px);pointer-events:none;transition:.7s;
+}
+.card.show{opacity:1;transform:none;pointer-events:auto}
+.msg{font-size:1.2rem}
+.from{margin-top:16px;color:var(--marigold);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px}
+button.chip,button.btn{font:inherit;cursor:pointer;border-radius:999px;padding:9px 18px;border:1px solid var(--marigold);background:transparent;color:var(--text)}
+button.chip[aria-pressed=true]{background:var(--marigold);color:var(--night);font-weight:600}
+button.btn{background:var(--flame);border-color:var(--flame);color:#1b1236;font-weight:600}
+button.btn.alt{background:transparent;color:var(--text);border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--marigold);outline-offset:3px}
+.sr{position:absolute;left:-9999px}
+canvas{position:fixed;inset:0;pointer-events:none;z-index:5}
+@media (prefers-reduced-motion:reduce){.diya.lit .flame{animation:none}.card{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <img class="hero" src="top.webp" alt="Festival greeting portrait" width="474" height="474">
+  <h1 id="title">Happy Diwali!</h1>
+  <p class="to" id="to">To everyone on the team</p>
+
+  <p class="hint" id="hint">Tap each diya to light it.</p>
+  <div class="diyas" id="diyas"></div>
+
+  <section class="card" id="card" aria-live="polite">
+    <p class="msg" id="msg"></p>
+    <p class="from" id="from"></p>
+    <div class="chips" id="chips" role="group" aria-label="Choose a message"></div>
+    <div class="chips">
+      <button class="btn alt" id="again">Relight</button>
+    </div>
+  </section>
+
+</main>
+<canvas id="fx"></canvas>
+
+<script>
+/* ===== EDIT YOUR CONTENT HERE ===== */
+const MESSAGES = [
+  "May this festival of lights bring you joy, good health and a year full of wins.",
+  "Thank you for being a great teammate. Wishing you and your family a bright and happy Diwali.",
+  "May your inbox stay empty, your deadlines stay kind and your home glow with happiness.",
+  "Wishing you light, laughter and plenty of sweets. Enjoy the break, you earned it."
+];
+const COUNT = 5; // number of diyas
+
+const q = new URLSearchParams(location.search);
+const toName = (q.get("to")||"").trim().slice(0,40);
+const fromName = (q.get("from")||"").trim().slice(0,40);
+const $ = id => document.getElementById(id);
+let idx = Math.min(parseInt(q.get("m")||"0",10)||0, MESSAGES.length-1);
+let lit = 0;
+
+if(toName){ $("title").textContent = "Happy Diwali, " + toName + "!"; $("to").textContent = "A little light for your day"; document.title = $("title").textContent; }
+$("from").textContent = fromName ? "With warm wishes, " + fromName : "With warm wishes from your colleagues";
+
+const diyaSVG = `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <circle class="glow" cx="50" cy="42" r="40" fill="#ffb627" opacity=".25"/>
+  <g class="flame"><path d="M50 14c9 12 14 20 8 30-3 5-13 5-16 0-6-10 3-18 8-30z" fill="#ff7a1a"/><path d="M50 26c5 7 7 12 4 17-2 3-6 3-8 0-3-5 1-10 4-17z" fill="#ffe08a"/></g>
+  <path d="M12 56h76c0 20-16 32-38 32S12 76 12 56z" fill="#c4521f"/>
+  <path d="M12 56h76" stroke="#ffb627" stroke-width="4"/>
+  <path d="M30 70q20 10 40 0" stroke="#ffb627" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>`;
+
+const wrap = $("diyas");
+for(let i=0;i<COUNT;i++){
+  const b=document.createElement("button");
+  b.className="diya"; b.innerHTML=diyaSVG+'<span class="sr">Light diya '+(i+1)+'</span>';
+  b.onclick=()=>{ if(b.classList.contains("lit"))return; b.classList.add("lit"); lit++; sparkle(b); if(lit===COUNT) reveal(); else $("hint").textContent=(COUNT-lit)+" more to go."; };
+  wrap.appendChild(b);
+}
+
+function setMsg(i){
+  idx=i; $("msg").textContent=MESSAGES[i];
+  [...$("chips").children].forEach((c,j)=>c.setAttribute("aria-pressed",j===i));
+}
+MESSAGES.forEach((_,i)=>{
+  const c=document.createElement("button"); c.className="chip"; c.textContent="Message "+(i+1);
+  c.onclick=()=>setMsg(i); $("chips").appendChild(c);
+});
+setMsg(idx);
+
+function reveal(){
+  $("hint").textContent="Your diyas are lit.";
+  $("card").classList.add("show"); burst();
+}
+$("again").onclick=()=>{
+  document.querySelectorAll(".diya").forEach(d=>d.classList.remove("lit"));
+  lit=0; $("card").classList.remove("show"); $("hint").textContent="Tap each diya to light it.";
+};
+
+
+/* sparkles */
+const cv=$("fx"),ctx=cv.getContext("2d");let P=[];
+function size(){cv.width=innerWidth;cv.height=innerHeight}size();addEventListener("resize",size);
+function sparkle(el){const r=el.getBoundingClientRect();add(r.left+r.width/2,r.top+r.height*.3,14)}
+function burst(){for(let i=0;i<5;i++)add(innerWidth*(.15+i*.18),innerHeight*.35,26)}
+function add(x,y,n){
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+  const cols=["#ffb627","#ff7a1a","#ff4f81","#fff4e0"];
+  for(let i=0;i<n;i++){const a=Math.random()*6.28,s=1+Math.random()*3.5;
+    P.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1.5,l:1,c:cols[i%4]})}
+  if(P.length===n)loop();
+}
+function loop(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  P=P.filter(p=>p.l>0);
+  P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.06;p.l-=.014;ctx.globalAlpha=Math.max(p.l,0);ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,6.28);ctx.fill()});
+  if(P.length)requestAnimationFrame(loop);else ctx.clearRect(0,0,cv.width,cv.height);
+}
+</script>
+</body>
+</html>
